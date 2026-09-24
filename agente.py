@@ -11,22 +11,20 @@ class EstadoAgente(IntEnum):
 
 
 
-class Accion(Enum):
-    UP = (-1, 0)
-    DOWN = (1, 0)
-    LEFT = (0, -1)
-    RIGHT = (0, 1)
-    WAIT = (0, 0)
-
-
-
 class Agente:
-    def __init__(self, id_agente: int, pos_inicial: tuple[int, int]):
+    def __init__(
+        self,
+        id_agente: int,
+        pos_inicial: tuple[int, int],
+        algoritmo: str
+    ):
         self.id : int = id_agente
         self.pos : tuple[int, int] = pos_inicial
+        self.estrategia_busqueda = Algoritmo.busqueda(algoritmo)
+
         self.estado : EstadoAgente = EstadoAgente.ACTIVO
         self.ruta_planeada : list[tuple[int, int]] = []
-        self.acciones_planeadas: list[Accion] = []
+        self.costo_ruta: float = 0.0
         self.turnos_transcurridos = 0
         self.esta_esperando: bool = False
         self.contador_planificaciones = 0
@@ -39,6 +37,29 @@ class Agente:
 
     def es_baja(self) -> bool:
         return self.estado == EstadoAgente.BAJA
+
+
+
+    def get_vecinos(
+        self,
+        nodo: tuple[int, int],
+        mapa: Mapa,
+        ocupacion_celdas: dict[tuple[int, int], int]
+    ) -> list[tuple[float, tuple[int, int]]]:
+        """
+        Obtiene los movimientos ortogonales válidos desde una celda (nodo) y sus costos de paso.
+        """
+
+        vecinos: list[tuple[float, tuple[int, int]]] = []
+        nx, ny = nodo
+
+        for nueva_pos in mapa.get_celdas_ortogonales(nx, ny):
+            costo = mapa.funcion_costo_celda(nueva_pos, ocupacion_celdas)
+            vecinos.append((costo, nueva_pos))
+
+        return vecinos
+
+
 
     def planificar_ruta(self, mapa: Mapa, ocupacion_celdas: dict[tuple[int, int], int]) -> None:
         if not self.es_activo():
@@ -54,30 +75,28 @@ class Agente:
             self.ruta_planeada = []
             return
 
-        def es_meta(nodo: tuple[int, int]) -> bool:
-            return nodo == mapa.pos_salida
+        # Función puente
+        def expandir(nodo: tuple[int, int]):
+            return self.get_vecinos(nodo, mapa, ocupacion_celdas)
 
-        def expandir(nodo: tuple[int, int]) -> list[tuple[float, tuple[int, int]]]:
-            vecinos = []
-            nx, ny = nodo
-
-            for nueva_pos in mapa.get_celdas_ortogonales(nx, ny):
-                costo = mapa.funcion_costo_celda(nueva_pos, ocupacion_celdas)
-                vecinos.append((costo, nueva_pos))
-
-            return vecinos
-
-        camino = Algoritmo.Busqueda_Costo_Uniforme(
+        costo, camino = self.estrategia_busqueda(
             nodo_inicial=self.pos,
-            es_meta=es_meta,
+            nodo_objetivo=mapa.pos_salida,
             expandir=expandir
         )
 
-        if camino:
-            self.ruta_planeada = list(camino)
-            return
-        else:
-            self.ruta_planeada = []
+        self.costo_ruta = costo
+        self.ruta_planeada = camino
+
+        # if camino:
+        #     self.ruta_planeada = list(camino)
+        #     self.costo_ruta = costo
+        #     return
+        # else:
+        #     self.ruta_planeada = []
+        #     self.costo_ruta = float('inf')
+
+
 
     def ruta_bloqueada(self, mapa: Mapa) -> bool:
         for x, y in self.ruta_planeada:
@@ -91,8 +110,11 @@ class Agente:
     def marcar_evacuado(self) -> None:
         self.estado = EstadoAgente.EVACUADO
 
+
+
     def decidir_siguiente_movimiento(
-        self, mapa: Mapa,
+        self,
+        mapa: Mapa,
         ocupacion_celdas: dict[tuple[int, int], int]
     ) -> tuple[int, int]:
         

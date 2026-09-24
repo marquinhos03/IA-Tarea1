@@ -1,7 +1,8 @@
-
 from collections import Counter
 from mapa import Mapa, TipoCelda
 from agente import Agente, EstadoAgente
+
+
 
 class Utilidades:
 

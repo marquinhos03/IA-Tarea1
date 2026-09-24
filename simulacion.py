@@ -2,27 +2,35 @@
 from mapa import Mapa, TipoCelda
 from agente import Agente
 
+
+
 class Simulacion:
     def __init__(
         self, 
         mapa: Mapa, 
         posiciones_agentes: list[tuple[int, int]], 
         k_turnos_fuego: int, 
-        max_turnos: int
+        max_turnos: int, 
+        algoritmo_busqueda: str
     ):
         self.mapa = mapa
-        self.k_turnos = k_turnos_fuego
+        self.k_turnos_fuego = k_turnos_fuego
         self.max_turnos = max_turnos
+        self.algoritmo_busqueda = algoritmo_busqueda
 
         # Instanciar agentes
         self.agentes: list[Agente] = []
         for i, pos in enumerate(posiciones_agentes):
-            self.agentes.append(Agente(id_agente=i, pos_inicial=pos))
+            self.agentes.append(Agente(id_agente=i, pos_inicial=pos, algoritmo=algoritmo_busqueda))
 
         self.turno_actual = 0
 
+
+
     def get_ocupacion_celdas(self) -> dict[tuple[int, int], int]:
-        """Calcula cuántos agentes ocupan actualmente cada celda."""
+        """
+        Calcula cuántos agentes ocupan actualmente cada celda.
+        """
         ocupacion = {}
 
         for agente in self.agentes:
@@ -31,6 +39,8 @@ class Simulacion:
                 ocupacion[agente.pos] = ocupacion_actual + 1
         
         return ocupacion
+
+
 
     def ejecutar_turno(self) -> None:
         agentes_activos = [agente for agente in self.agentes if agente.es_activo()]
@@ -41,12 +51,6 @@ class Simulacion:
         for agente in agentes_activos:
             pos_objetivo = agente.decidir_siguiente_movimiento(self.mapa, ocupacion_celdas)
             movimientos_tentativos[agente.id] = pos_objetivo
-
-            # DEBUG
-            print(f"[{agente.id}] Ruta elegida: {agente.ruta_planeada}")
-            print(f"[{agente.id}]Total planificaciones: {agente.contador_planificaciones}")
-            print(f"[{agente.id}]Estado de espera: {agente.esta_esperando}")
-            print()
 
         # 2. Fase de Resolución de Conflictos: Resolución de sobreocupación de celdas
         fue_rechazado = True
@@ -63,6 +67,7 @@ class Simulacion:
                 # La salida permite cualquier cantidad de evacuados simultáneos
                 if pos_destino == self.mapa.pos_salida:
                     continue
+                
                 # La capacidad física de la celda destino no puede ser superada, por lo que aplicamos unas restricciones de prioridad:
                 # 1. El agente que ya estaba en esa celda (residente) tiene prioridad sobre los visitantes.
                 # 2. En empate entre visitantes, desempatar por orden de llegada / ID.
@@ -98,7 +103,7 @@ class Simulacion:
         
         # 4. Fase de Propagación de Fuego: Propagar fuego cada k turnos: (siguiente_turno) mod (k turnos) = 0
         siguiente_turno = self.turno_actual + 1
-        if siguiente_turno % self.k_turnos == 0:
+        if siguiente_turno % self.k_turnos_fuego == 0:
             self.mapa.propagar_fuego()
 
         # 5. Fase de Actualización de Estados: Verificar si hubo evacuados y bajas
@@ -109,6 +114,8 @@ class Simulacion:
                 agente.marcar_evacuado()
 
         self.turno_actual = siguiente_turno
+
+
 
     def esta_finalizada(self) -> bool:
         """
