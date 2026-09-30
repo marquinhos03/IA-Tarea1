@@ -1,4 +1,3 @@
-from enum import Enum
 from enum import IntEnum
 from collections import deque
 
@@ -8,16 +7,19 @@ class TipoCelda(IntEnum):
     FUEGO = 2
     SALIDA = 3
 
+DIRECCIONES = ((0, -1), (0, 1), (-1, 0), (1, 0))
 
 
 class Mapa:
+    DIRECCIONES = DIRECCIONES
+    
     def __init__(self, 
         filas: int, 
         columnas: int, 
         muros: set[tuple[int, int]], 
         pos_salida: tuple[int, int], 
         fuego: set[tuple[int, int]], 
-        capacidad_celda=1
+        capacidad_celda: int = 1
     ):
         self.filas = filas
         self.columnas = columnas
@@ -25,6 +27,7 @@ class Mapa:
         self.pos_salida = pos_salida
         self.fuego = set(fuego)
         self.capacidad_celda = capacidad_celda
+
 
     @classmethod
     def desde_matriz(cls, matriz: list[list[int]], capacidad_celda=1):
@@ -54,57 +57,135 @@ class Mapa:
             capacidad_celda=capacidad_celda
         )
 
-    def esta_en_limites(self, x: int, y: int) -> bool:
+
+    def esta_dentro_de_limites(self, pos: tuple[int, int]) -> bool:
+        x, y = pos
         return (0 <= x < self.filas) and (0 <= y < self.columnas)
 
-    def get_tipo_celda(self, x: int, y: int) -> TipoCelda:
-        if not self.esta_en_limites(x, y) or (x, y) in self.muros:
+
+    def es_celda_muro(self, pos: tuple[int, int]) -> bool:
+        """Indica si la posición es un muro o está fuera de los límites del mapa."""
+        return not self.esta_dentro_de_limites(pos) or pos in self.muros
+
+
+    def es_celda_fuego(self, pos: tuple[int, int]) -> bool:
+        """Indica si la posición es una celda de fuego."""
+        return pos in self.fuego
+
+
+    def es_celda_salida(self, pos: tuple[int, int]) -> bool:
+        """Indica si la posición es la celda de salida."""
+        return self.pos_salida is not None and pos == self.pos_salida
+
+
+    def es_celda_vacia(self, pos: tuple[int, int]) -> bool:
+        """Indica si la posición es una celda transitable, sin fuego y no es la salida."""
+        return (
+            self.esta_dentro_de_limites(pos)
+            and pos not in self.muros
+            and pos not in self.fuego
+            and pos != self.pos_salida
+        )
+
+    
+    def es_celda_transitable(self, pos: tuple[int, int]) -> bool:
+        """Indica si una celda está vacía (puede ser la salida)."""
+        return (
+            self.esta_dentro_de_limites(pos)
+            and pos not in self.muros
+            and pos not in self.fuego
+        )
+
+
+    def es_salida_obstruida(self, desde_pos: tuple[int, int] | None = None) -> bool:
+        """
+        Determina si la salida o sus accesos han sido obstruidos/consumidos por el fuego.
+        - Si se especifica 'desde_pos', verifica si la salida es alcanzable desde esa posición.
+        - Si no se especifica, verifica si la salida está aislada del resto del mapa transitable.
+        """
+        if self.pos_salida is None or self.es_celda_fuego(self.pos_salida):
+            return True
+
+        vecinos_salida = self.get_celdas_ortogonales(self.pos_salida)
+        if not vecinos_salida:
+            return True
+
+        # Caso 1: Consulta particular desde la posición de un agente
+        if desde_pos is not None:
+            if desde_pos == self.pos_salida:
+                return False
+            if not self.es_celda_transitable(desde_pos):
+                return True
+
+            cola = deque([desde_pos])
+            visitados = {desde_pos}
+            while cola:
+                curr = cola.popleft()
+                if curr == self.pos_salida:
+                    return False
+                for vecino in self.get_celdas_ortogonales(curr):
+                    if vecino not in visitados:
+                        visitados.add(vecino)
+                        cola.append(vecino)
+            return True
+
+        # Caso 2: Consulta global (usada por el simulador o main.py)
+        cola = deque([self.pos_salida])
+        visitados = {self.pos_salida}
+        while cola:
+            curr = cola.popleft()
+            if len(visitados) >= 15:
+                return False
+            for vecino in self.get_celdas_ortogonales(curr):
+                if vecino not in visitados:
+                    visitados.add(vecino)
+                    cola.append(vecino)
+
+        return True
+
+
+    def get_tipo_celda(self, pos: tuple[int, int]) -> TipoCelda:
+        if self.es_celda_muro(pos):
             return TipoCelda.MURO
-        if (x, y) in self.fuego:
+        if self.es_celda_fuego(pos):
             return TipoCelda.FUEGO
-        if (x, y) == self.pos_salida:
+        if self.es_celda_salida(pos):
             return TipoCelda.SALIDA
         return TipoCelda.VACIA
 
-    def es_celda_transitable(self, x: int, y: int) -> bool:
-        """Devuelve True si (x, y) es una celda VACIA o la SALIDA """
-        return self.get_tipo_celda(x, y) in (TipoCelda.VACIA, TipoCelda.SALIDA)
 
-    def get_celdas_ortogonales(self, x, y) -> list[tuple[int, int]]:
-        direcciones = [(0, -1), (0, 1), (-1, 0), (1, 0)]
+    def get_celdas_ortogonales(self, pos: tuple[int, int]) -> list[tuple[int, int]]:
         permitidas = []
 
-        for dx, dy in direcciones:
-            px, py = x + dx, y + dy
-            if self.es_celda_transitable(px, py):
-                permitidas.append((px, py))
+        x, y = pos
+        for dx, dy in DIRECCIONES:
+            vecino = (x + dx, y + dy)
+            if self.es_celda_transitable(vecino):
+                permitidas.append(vecino)
 
         return permitidas
 
+
     def propagar_fuego(self) -> None:
         nuevo_fuego = set()
-        direcciones = [(0, -1), (0, 1), (-1, 0), (1, 0)]
 
         for fx, fy in list(self.fuego):
-            for dx, dy in direcciones:
-                nx, ny = fx + dx, fy + dy
-                if self.esta_en_limites(nx, ny) and (nx, ny) not in self.muros and (nx, ny) not in self.fuego and (nx, ny) != self.pos_salida:
-                    nuevo_fuego.add((nx, ny))
+            for dx, dy in DIRECCIONES:
+                vecino = (fx + dx, fy + dy)
+                if self.es_celda_vacia(vecino):
+                    nuevo_fuego.add(vecino)
 
         self.fuego.update(nuevo_fuego)
-    
-    def get_ocupacion_celda(self, pos: tuple[int, int], ocupacion_celdas: dict[tuple[int, int], int]) -> int:
-        return ocupacion_celdas.get(pos, 0)
+
 
     def funcion_costo_celda(
         self,
         pos_objetivo: tuple[int, int],
         ocupacion_celdas: dict[tuple[int, int], int]
     ) -> float:
+        
         costo_base = 1.0
         ocupacion_celda = ocupacion_celdas.get(pos_objetivo, 0)
         densidad_celda = ocupacion_celda / float(self.capacidad_celda)
 
         return costo_base + (densidad_celda ** 2)
-
-    

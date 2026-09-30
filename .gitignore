@@ -1,0 +1,16 @@
+.venv/
+venv/
+env/
+
+.vscode/
+.idea/
+.DS_Store
+
+# Python cache / Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Resultados de experimentos y benchmarks
+*.csv
+resultados_benchmark.csv

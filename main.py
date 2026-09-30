@@ -1,43 +1,47 @@
 from simulacion import Simulacion
-from mapa import Mapa
-from utilidades import Utilidades
+from utilidades import Utilidades, Modos
+from mapas import obtener_mapa
 
 
+# El fuego se expandirá cada k turnos random entre [1, 4] por cada vez que hagamos una simulación
+INTERVALO_TURNOS_PROPAGACION_FUEGO = (1, 4)
+# Intervalo de segundos para cada turno en el modo automático
+INTERVALO_SEGUNDOS_MODO_AUTO = 1.0
 
-# Definición manual del mapa 12x12 mediante una matriz 2D:
-# 0 = VACIA, 1 = MURO, 2 = FUEGO, 3 = SALIDA
-mapa_12x12 = [
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],  # Fila 0
-    [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 2, 1],  # Fila 1
-    [1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1],  # Fila 2
-    [1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1],  # Fila 3
-    [1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1],  # Fila 4
-    [1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1],  # Fila 5
-    [1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1],  # Fila 6
-    [1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1],  # Fila 7
-    [1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1],  # Fila 8
-    [1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1],  # Fila 9
-    [1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 3, 1],  # Fila 10
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]   # Fila 11
-]
 
-mapa = Mapa.desde_matriz(mapa_12x12)
+def main() -> None:
+    num_mapa, nombre_algoritmo, cantidad_agentes = Utilidades.procesar_argumentos()
 
-print("Mapa 12x12 cargado desde matriz:")
-print()
+    # 1. Crear mapa
+    m = obtener_mapa(numero=num_mapa, benchmark=False)
 
-coords_agentes = [(1, 1), (1, 6), (6, 1), (1, 4), (6, 4)]
-sim = Simulacion(mapa, coords_agentes, 2, 19, "BFS")
+    # 2. Inicializar la simulación con el algoritmo seleccionado
+    sim = Simulacion(
+        mapa=m,
+        k_turnos_fuego=INTERVALO_TURNOS_PROPAGACION_FUEGO,
+        algoritmo_busqueda=nombre_algoritmo,
+        max_turnos=500,
+        replanificar_cada_turno=True
+    )
+    
+    # 3. Agregar agentes y fuego a la simulación
+    sim.agregar_agentes(cantidad=cantidad_agentes)
+    sim.agregar_fuego_aleatorio(cantidad=1, semilla=None)
 
-Utilidades.mostrar_simulacion(sim.mapa, sim.agentes, sim.turno_actual)
-print()
+    modo = Modos.MANUAL
+    while True:
+        Utilidades.mostrar_mapa(sim.mapa, sim.agentes, sim.turno_actual, sim.k_turnos_fuego)
 
-print("=== SIMULACIÓN INICIADA ===")
-print()
+        if sim.esta_finalizada():
+            break
+        if sim.mapa.es_salida_obstruida():
+            modo = Modos.FINAL
 
-while not sim.esta_finalizada():
-    sim.ejecutar_turno()
-    Utilidades.mostrar_simulacion(sim.mapa, sim.agentes, sim.turno_actual)
-    print()
+        modo = Utilidades.esperar_interaccion(modo, delay=INTERVALO_SEGUNDOS_MODO_AUTO)
+        sim.ejecutar_turno()
 
-print("=== SIMULACIÓN TERMINADA ===")
+    print("=== SIMULACIÓN TERMINADA ===")
+
+
+if __name__ == "__main__":
+    main()
