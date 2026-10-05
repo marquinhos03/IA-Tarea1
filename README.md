@@ -2,6 +2,8 @@
 
 Simulador de evacuación de emergencia ante la propagación de fuego en una torre, implementado con diferentes algoritmos de búsqueda y planificación de rutas para agentes autónomos.
 
+> ℹ️ **Nota:** El código ha sido ejecutado y probado únicamente en **Linux**.
+
 ---
 
 ## 🚀 Ejecución de la Simulación
