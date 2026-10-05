@@ -1,3 +1,7 @@
+# ======================================
+# GENERADO CON IA
+# ======================================
+
 import sys
 import os
 import random
@@ -6,7 +10,15 @@ from collections import Counter
 # Asegurar que se encuentre el módulo raíz
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from algoritmos import Algoritmo, INFINITO
+from algoritmos import get_algorithm
+from algoritmos.utilidades import INFINITO
+from algoritmos.busqueda_genetica import (
+    seleccion_ruleta,
+    eliminar_ciclos,
+    cruce_caminos,
+    mutar_camino,
+    calcular_costo_camino,
+)
 from mapa import Mapa
 from agente import Agente
 
@@ -18,7 +30,8 @@ def test_caso_base():
     print("Ejecutando Test 1: Inicio == Meta...")
 
     expandir_mock = lambda nodo: []
-    costo, camino = Algoritmo.Busqueda_Genetica((2, 2), (2, 2), expandir_mock)
+    algoritmo_genetico = get_algorithm("genetico")
+    costo, camino = algoritmo_genetico((2, 2), (2, 2), expandir_mock)
 
     assert costo == 0.0, f"Error: El costo esperado era 0.0, pero dio {costo}"
     assert camino == [], f"Error: El camino esperado era [], pero dio {camino}"
@@ -33,7 +46,8 @@ def test_caso_inalcanzable():
     print("Ejecutando Test 2: Objetivo Inalcanzable...")
 
     expandir_vacio = lambda nodo: []
-    costo, camino = Algoritmo.Busqueda_Genetica((0, 0), (5, 5), expandir_vacio)
+    algoritmo_genetico = get_algorithm("genetico")
+    costo, camino = algoritmo_genetico((0, 0), (5, 5), expandir_vacio)
 
     assert costo == float('inf'), f"Error: El costo debió ser infinito, pero dio {costo}"
     assert camino == [], f"Error: El camino debió ser [], pero dio {camino}"
@@ -53,7 +67,8 @@ def test_caso_lineal():
             return [(1.0, (x + 1, y))]
         return []
 
-    costo, camino = Algoritmo.Busqueda_Genetica((0, 0), (3, 0), expandir_linea, semilla=42)
+    algoritmo_genetico = get_algorithm("genetico")
+    costo, camino = algoritmo_genetico((0, 0), (3, 0), expandir_linea, semilla=42)
 
     assert costo == 3.0, f"Error: Costo esperado 3.0, obtenido {costo}"
     assert camino == [(1, 0), (2, 0), (3, 0)], f"Error en el camino reconstruido: {camino}"
@@ -76,7 +91,7 @@ def test_formula_seleccion_ruleta():
 
     # Muestreo empírico de 10,000 selecciones
     num_muestras = 10000
-    conteos = Counter(Algoritmo.seleccion_ruleta(poblacion, fitnesses) for _ in range(num_muestras))
+    conteos = Counter(seleccion_ruleta(poblacion, fitnesses) for _ in range(num_muestras))
 
     for ind, prob_esperada in prob_esperadas.items():
         prob_empirica = conteos[ind] / num_muestras
@@ -97,7 +112,7 @@ def test_eliminacion_ciclos():
 
     # Camino con un bucle: (0,0) -> (0,1) -> (0,2) -> (0,1) -> (1,1)
     camino_con_ciclo = [(0, 0), (0, 1), (0, 2), (0, 1), (1, 1)]
-    camino_sin_ciclo = Algoritmo.eliminar_ciclos(camino_con_ciclo)
+    camino_sin_ciclo = eliminar_ciclos(camino_con_ciclo)
 
     esperado = [(0, 0), (0, 1), (1, 1)]
     assert camino_sin_ciclo == esperado, f"Ciclo no eliminado correctamente: {camino_sin_ciclo} != {esperado}"
@@ -116,7 +131,7 @@ def test_cruce_caminos():
     padre1 = [(0, 0), (1, 0), (2, 0), (2, 1), (2, 2), (3, 2), (4, 2)]
     padre2 = [(0, 0), (0, 1), (0, 2), (1, 2), (2, 2), (2, 3), (2, 4)]
 
-    hijo1, hijo2 = Algoritmo.cruce_caminos(padre1, padre2, prob_cruce=1.0)
+    hijo1, hijo2 = cruce_caminos(padre1, padre2, prob_cruce=1.0)
 
     # Validar que los hijos mantengan el inicio
     assert hijo1[0] == (0, 0) and hijo2[0] == (0, 0), "Los hijos deben iniciar en el nodo raíz"
@@ -151,7 +166,7 @@ def test_mutacion_camino():
                 vecinos.append((1.0, (nx, ny)))
         return vecinos
 
-    mutado = Algoritmo.mutar_camino(camino_largo, expandir_mock, nodo_objetivo=(2, 0), prob_mutacion=1.0)
+    mutado = mutar_camino(camino_largo, expandir_mock, nodo_objetivo=(2, 0), prob_mutacion=1.0)
     assert mutado[0] == (0, 0), "La mutación no debe alterar el nodo inicial"
     # Verificar conectividad de cada paso
     for i in range(len(mutado) - 1):
@@ -194,8 +209,11 @@ def test_comparacion_cruzada_con_a_estrella():
     inicio = (1, 1)
     meta = mapa.pos_salida
 
-    costo_astar, camino_astar = Algoritmo.Busqueda_A_Estrella(inicio, meta, expandir)
-    costo_gen, camino_gen = Algoritmo.Busqueda_Genetica(inicio, meta, expandir, semilla=42)
+    algoritmo_a_estrella = get_algorithm("a_estrella")
+    algoritmo_genetico = get_algorithm("genetico")
+
+    costo_astar, camino_astar = algoritmo_a_estrella(inicio, meta, expandir)
+    costo_gen, camino_gen = algoritmo_genetico(inicio, meta, expandir, semilla=42)
 
     print(f"   A*       -> Costo: {costo_astar}, Pasos: {len(camino_astar)}")
     print(f"   Genético -> Costo: {costo_gen}, Pasos: {len(camino_gen)}")
@@ -212,7 +230,7 @@ def test_comparacion_cruzada_con_a_estrella():
         pos_actual = paso
 
     # El costo de la ruta debe coincidir con el costo acumulado calculado
-    costo_verificado = Algoritmo.calcular_costo_camino([inicio] + camino_gen, expandir)
+    costo_verificado = calcular_costo_camino([inicio] + camino_gen, expandir)
     assert abs(costo_gen - costo_verificado) < 1e-5, f"Discrepancia en costo: {costo_gen} vs {costo_verificado}"
 
     # Verificamos que sea óptimo o muy cercano (≤ óptimo + 2 pasos en este laberinto)
@@ -225,7 +243,7 @@ def test_comparacion_cruzada_con_a_estrella():
 
 def test_integracion_con_agente():
     """
-    Prueba 9: Integración de 'Genetico' con la clase Agente y despacho desde Algoritmo.busqueda.
+    Prueba 9: Integración de 'genetico' con la clase Agente y despacho desde get_algorithm.
     """
     print("Ejecutando Test 9: Integración con la clase Agente...")
 
@@ -235,10 +253,10 @@ def test_integracion_con_agente():
         [1, 1, 1, 1, 1]
     ]
     mapa = Mapa.desde_matriz(mapa_matriz)
-    agente = Agente(id_agente=0, pos_inicial=(1, 1), algoritmo="Genetico")
+    agente = Agente(id_agente=0, pos_inicial=(1, 1), nombre_algoritmo="genetico")
 
-    assert agente.algoritmo == "Genetico"
-    assert agente.estrategia_busqueda == Algoritmo.Busqueda_Genetica
+    assert agente.algoritmo == "genetico"
+    assert agente.algoritmo_seleccionado == get_algorithm("genetico")
 
     agente.planificar_ruta(mapa, {})
     assert len(agente.ruta_planeada) == 2

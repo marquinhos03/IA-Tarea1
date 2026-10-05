@@ -1,3 +1,7 @@
+# ======================================
+# MODULO GENERADO CON IA
+# ======================================
+
 """
 Módulo para Métricas de Benchmarking y Experimentos.
 """
@@ -7,33 +11,22 @@ import os
 import sys
 import statistics
 from dataclasses import dataclass, asdict, fields
-from typing import Callable
 
 # Directorio raíz del proyecto en sys.path
 DIRECTORIO_RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(DIRECTORIO_RAIZ)
 
-from mapa import Mapa
+from mapas import obtener_mapa
 from simulacion import Simulacion
-from mapas import (
-    obtener_mapa_1_benchmark,
-    obtener_mapa_2_benchmark,
-    obtener_mapa_3_benchmark,
-)
+
 
 ALGORITMOS_BENCHMARK = [
-    "BFS",
-    "Costo Uniforme",
-    "A*",
-    "IDA*",
-    #"Genético",
+    "bfs",
+    "costo_uniforme",
+    "a_estrella",
+    "ida_estrella",
+    "genetico",
 ]
-
-FABRICAS_MAPAS_BENCHMARK = {
-    1: lambda: obtener_mapa_1_benchmark(capacidad_celda=1),
-    2: lambda: obtener_mapa_2_benchmark(capacidad_celda=1),
-    3: lambda: obtener_mapa_3_benchmark(capacidad_celda=1),
-}
 
 RUTA_CSV_DEFAULT = os.path.join(DIRECTORIO_RAIZ, "resultados_benchmark.csv")
 
@@ -62,8 +55,8 @@ class ResultadoExperimento:
 
 # Nivel 1
 def ejecutar_iteracion(
-    crear_mapa_fn: Callable[[], Mapa],
-    algoritmo: str,
+    num_mapa: int,
+    nombre_algoritmo: str,
     posiciones_agentes: list[tuple[int, int]] | None = None,
     cantidad_agentes: int = 80,
     cantidad_fuego: int = 1,
@@ -76,14 +69,14 @@ def ejecutar_iteracion(
     """
 
     # 1. Instanciar un mapa nuevo e inalterado
-    mapa = crear_mapa_fn()
+    mapa = obtener_mapa(num_mapa, benchmark=True, capacidad_celda=1)
 
     # 2. Inicializar la simulación
     # Sin limite de turnos
     sim = Simulacion(
         mapa=mapa,
         k_turnos_fuego=k_turnos_fuego,
-        algoritmo_busqueda=algoritmo,
+        nombre_algoritmo=nombre_algoritmo,
         replanificar_cada_turno=replanificar_cada_turno
     )
 
@@ -119,8 +112,8 @@ def ejecutar_iteracion(
 # Nivel 2
 def ejecutar_iteraciones(
     num_iteraciones: int,
-    crear_mapa_fn: Callable[[], Mapa],
-    algoritmo: str,
+    num_mapa: int,
+    nombre_algoritmo: str,
     **kwargs
 ) -> list[ResultadoIteracion]:
     """
@@ -131,14 +124,14 @@ def ejecutar_iteraciones(
     for i in range(num_iteraciones):
         # Si no se fija semilla fija en kwargs, cada iteración tendrá fuego aleatorio diferente
         datos_simulacion = ejecutar_iteracion(
-            crear_mapa_fn=crear_mapa_fn,
-            algoritmo=algoritmo,
+            num_mapa=num_mapa,
+            nombre_algoritmo=nombre_algoritmo,
             **kwargs
         )
         resultados_iteraciones.append(datos_simulacion)
 
         # Seguimiento de iteraciones (Avisar cada 20 iteraciones)
-        if (i + 1) % 20 == 0:
+        if (i + 1) % 5 == 0:
             print(f"  -> {i + 1}/{num_iteraciones} iteraciones completadas...")
 
     return resultados_iteraciones
@@ -147,7 +140,6 @@ def ejecutar_iteraciones(
 # Nivel 3
 def ejecutar_experimento(
     num_mapa: int,
-    crear_mapa_fn: Callable[[], Mapa],
     nombre_algoritmo: str,
     num_iteraciones: int = 80,
     **kwargs
@@ -162,8 +154,8 @@ def ejecutar_experimento(
     
     iteraciones = ejecutar_iteraciones(
         num_iteraciones=num_iteraciones,
-        crear_mapa_fn=crear_mapa_fn,
-        algoritmo=nombre_algoritmo,
+        num_mapa=num_mapa,
+        nombre_algoritmo=nombre_algoritmo,
         **kwargs
     )
 
@@ -251,7 +243,7 @@ def ejecutar_experimentos_para_mapa(
     """
     Ejecuta el experimento de benchmarking para un mapa dado probando cada uno de los algoritmos especificados.
     """
-    crear_mapa_fn = FABRICAS_MAPAS_BENCHMARK[num_mapa]
+
     resultados: list[ResultadoExperimento] = []
 
     print(f"\n=======================================================")
@@ -261,7 +253,6 @@ def ejecutar_experimentos_para_mapa(
     for algo in algoritmos:
         res = ejecutar_experimento(
             num_mapa=num_mapa,
-            crear_mapa_fn=crear_mapa_fn,
             nombre_algoritmo=algo,
             num_iteraciones=num_iteraciones,
             cantidad_agentes=cantidad_agentes,

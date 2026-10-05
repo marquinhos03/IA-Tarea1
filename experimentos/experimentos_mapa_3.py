@@ -16,7 +16,7 @@ def main() -> None:
     ejecutar_experimentos_para_mapa(
         num_mapa=3,
         algoritmos=ALGORITMOS_BENCHMARK,
-        num_iteraciones=200,
+        num_iteraciones=80,
         cantidad_agentes=80,
     )
 

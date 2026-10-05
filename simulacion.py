@@ -2,18 +2,19 @@ from mapa import Mapa
 from agente import Agente
 import random
 
+SIN_LIMITE = 0
 
 class Simulacion:
     def __init__(
         self, 
         mapa: Mapa, 
         k_turnos_fuego: int | tuple[int, int], 
-        algoritmo_busqueda: str, 
-        max_turnos: int = 0,
+        nombre_algoritmo: str, 
+        max_turnos: int = SIN_LIMITE,
         replanificar_cada_turno: bool = True
     ):
         self.mapa = mapa
-        self.algoritmo_busqueda = algoritmo_busqueda
+        self.nombre_algoritmo = nombre_algoritmo
         self.max_turnos = max_turnos
         self.replanificar_cada_turno = replanificar_cada_turno
 
@@ -28,7 +29,9 @@ class Simulacion:
         self.turno_actual = 0
 
 
+    # ======================================
     # GENERADO CON IA
+    # ======================================
     def _obtener_posiciones_random(
         self,
         cantidad: int,
@@ -79,7 +82,7 @@ class Simulacion:
             nuevo_agente = Agente(
                 id_agente=i,
                 pos_inicial=pos,
-                algoritmo=self.algoritmo_busqueda,
+                nombre_algoritmo=self.nombre_algoritmo,
                 replanificar_cada_turno=self.replanificar_cada_turno
             )
             self.agentes.append(nuevo_agente)

@@ -1,6 +1,7 @@
 from enum import IntEnum
-from algoritmos import Algoritmo
+from algoritmos import get_algorithm
 from mapa import Mapa
+
 
 class EstadoAgente(IntEnum):
     ACTIVO = 1
@@ -8,19 +9,18 @@ class EstadoAgente(IntEnum):
     BAJA = 3
 
 
-
 class Agente:
     def __init__(
         self,
         id_agente: int,
         pos_inicial: tuple[int, int],
-        algoritmo: str,
+        nombre_algoritmo: str,
         replanificar_cada_turno: bool = False
     ):
         self.id : int = id_agente
         self.pos : tuple[int, int] = pos_inicial
-        self.algoritmo : str = algoritmo
-        self.estrategia_busqueda = Algoritmo.busqueda(algoritmo)
+        self.algoritmo : str = nombre_algoritmo
+        self.algoritmo_seleccionado = get_algorithm(nombre_algoritmo)
         self.replanificar_cada_turno: bool = replanificar_cada_turno
 
         self.estado : EstadoAgente = EstadoAgente.ACTIVO
@@ -62,7 +62,12 @@ class Agente:
         return vecinos
 
 
-    def planificar_ruta(self, mapa: Mapa, ocupacion_celdas: dict[tuple[int, int], int]) -> None:
+    def planificar_ruta(
+        self,
+        mapa: Mapa,
+        ocupacion_celdas: dict[tuple[int, int], int]
+    ) -> None:
+
         if not self.es_activo():
             return
 
@@ -76,14 +81,10 @@ class Agente:
             self.costo_ruta = float('inf')
             return
 
-        # Función puente
-        def expandir(nodo: tuple[int, int]):
-            return self.get_vecinos(nodo, mapa, ocupacion_celdas)
-
-        costo, camino = self.estrategia_busqueda(
+        costo, camino = self.algoritmo_seleccionado(
             nodo_inicial=self.pos,
             nodo_objetivo=mapa.pos_salida,
-            expandir=expandir
+            expandir=lambda nodo: self.get_vecinos(nodo, mapa, ocupacion_celdas)
         )
 
         self.costo_ruta = costo

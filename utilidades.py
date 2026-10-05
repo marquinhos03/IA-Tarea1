@@ -1,3 +1,7 @@
+# ======================================
+# MODULO GENERADO CON IA
+# ======================================
+
 from collections import Counter
 from mapa import Mapa
 from agente import Agente, EstadoAgente
@@ -5,20 +9,13 @@ import sys
 import time
 import select
 
-ALGORITMOS_VALIDOS: dict[str, str] = {
+
+NOMBRES_ALGORITMOS_DASHBOARD: dict[str, str] = {
     "bfs": "BFS",
-    "costo uniforme": "Costo Uniforme",
     "costo_uniforme": "Costo Uniforme",
-    "costouniforme": "Costo Uniforme",
-    "ucs": "Costo Uniforme",
-    "a*": "A*",
-    "astar": "A*",
-    "a_star": "A*",
-    "ida*": "IDA*",
-    "idastar": "IDA*",
-    "ida_star": "IDA*",
+    "a_estrella": "A*",
+    "ida_estrella": "IDA*",
     "genetico": "Genético",
-    "genético": "Genético",
 }
 
 CANTIDAD_AGENTES_DEFAULT = 20
@@ -167,7 +164,7 @@ class Utilidades:
 
 
     @staticmethod
-    def mostrar_mapa(mapa: Mapa, agentes: list[Agente], turno: int, k_turnos_fuego: int) -> None:
+    def mostrar_mapa(numero_mapa: int, mapa: Mapa, agentes: list[Agente], turno: int, k_turnos_fuego: int) -> None:
         """
         Muestra el estado del mapa visualmente por consola
         """
@@ -186,11 +183,10 @@ class Utilidades:
         bajas = recuento_estados[EstadoAgente.BAJA]
 
         # Dashboard
-        nombre_algoritmo = agentes[0].algoritmo if agentes and hasattr(agentes[0], "algoritmo") else ""
-        num = getattr(mapa, "numero", 1)
-
+        algo_raw = agentes[0].algoritmo if agentes and hasattr(agentes[0], "algoritmo") else ""
+        nombre_algoritmo = NOMBRES_ALGORITMOS_DASHBOARD.get(algo_raw.lower(), algo_raw)
         tag_algoritmo = f" [ ALGORITMO: {nombre_algoritmo} ] "
-        tag_mapa = f" [ MAPA: {num} ] "
+        tag_mapa = f" [ MAPA: {numero_mapa} ] "
         relleno = 53 - 2 - len(tag_algoritmo) - len(tag_mapa) - 2
 
         print(
@@ -282,11 +278,11 @@ class Utilidades:
         print("Parámetros:")
         print("  <numero_mapa>        Número del mapa a cargar: 1, 2 o 3.")
         print("  <nombre_algoritmo>   Algoritmo de búsqueda:")
-        print("                       - 'BFS'")
-        print("                       - 'Costo Uniforme'")
-        print("                       - 'A*'")
-        print("                       - 'IDA*'")
-        print("                       - 'Genético'")
+        print("                       - 'bfs' o 'BFS'")
+        print("                       - 'costo_uniforme' o 'Costo Uniforme'")
+        print("                       - 'a_estrella' o 'A*'")
+        print("                       - 'ida_estrella' o 'IDA*'")
+        print("                       - 'genetico' o 'Genético'")
         print("  [cantidad_agentes]   (Opcional) Número de agentes.")
         print(f"                       Valor por defecto : {CANTIDAD_AGENTES_DEFAULT}")
         print(f"                       Rango permitido   : [{CANTIDAD_AGENTES_MIN}, {CANTIDAD_AGENTES_MAX}]\n")
@@ -317,6 +313,7 @@ class Utilidades:
             num_mapa = int(sys.argv[1])
             if num_mapa not in (1, 2, 3):
                 raise ValueError
+            # Utilidades.numero_mapa_actual = num_mapa
         except ValueError:
             Utilidades.mostrar_mensaje_uso(f"Número de mapa inválido: '{sys.argv[1]}'. Debe ser 1, 2 o 3.")
             sys.exit(1)
@@ -363,17 +360,16 @@ class Utilidades:
         algoritmo_arg = " ".join(args_restantes).strip()
         clave_algoritmo = algoritmo_arg.lower()
 
-        if clave_algoritmo not in ALGORITMOS_VALIDOS:
+        # Permitir tanto las claves directas como los nombres del dashboard
+        nombres_inversos = {v.lower(): k for k, v in NOMBRES_ALGORITMOS_DASHBOARD.items()}
+        if clave_algoritmo in nombres_inversos:
+            clave_algoritmo = nombres_inversos[clave_algoritmo]
+
+        if clave_algoritmo not in NOMBRES_ALGORITMOS_DASHBOARD:
+            opciones = ", ".join(f"'{k}' / '{v}'" for k, v in NOMBRES_ALGORITMOS_DASHBOARD.items())
             Utilidades.mostrar_mensaje_uso(
-                f"Algoritmo '{algoritmo_arg}' no reconocido. Opciones válidas: BFS, Costo Uniforme, A*, IDA*, Genético"
+                f"Algoritmo '{algoritmo_arg}' no reconocido. Opciones válidas: {opciones}"
             )
             sys.exit(1)
 
-        return num_mapa, ALGORITMOS_VALIDOS[clave_algoritmo], cant_agentes
-
-
-# Atajos a nivel de módulo
-mostrar_mensaje_uso = Utilidades.mostrar_mensaje_uso
-procesar_argumentos = Utilidades.procesar_argumentos
-
-
+        return num_mapa, clave_algoritmo, cant_agentes

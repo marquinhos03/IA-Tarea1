@@ -19,8 +19,7 @@ def main() -> None:
     sim = Simulacion(
         mapa=m,
         k_turnos_fuego=INTERVALO_TURNOS_PROPAGACION_FUEGO,
-        algoritmo_busqueda=nombre_algoritmo,
-        max_turnos=500,
+        nombre_algoritmo=nombre_algoritmo,
         replanificar_cada_turno=True
     )
     
@@ -30,7 +29,7 @@ def main() -> None:
 
     modo = Modos.MANUAL
     while True:
-        Utilidades.mostrar_mapa(sim.mapa, sim.agentes, sim.turno_actual, sim.k_turnos_fuego)
+        Utilidades.mostrar_mapa(num_mapa, sim.mapa, sim.agentes, sim.turno_actual, sim.k_turnos_fuego)
 
         if sim.esta_finalizada():
             break

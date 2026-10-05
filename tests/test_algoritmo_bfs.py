@@ -1,9 +1,13 @@
+# ======================================
+# EDITADO CON IA
+# ======================================
+
 import os
 import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from algoritmos import Algoritmo
+from algoritmos import get_algorithm
 from mapa import Mapa
 
 def test_caso_base():
@@ -15,7 +19,8 @@ def test_caso_base():
     # Función expandir vacía (no debería necesitar expandir ningún nodo)
     expandir_mock = lambda nodo: []
     
-    costo, camino = Algoritmo.Busqueda_En_Amplitud((2, 2), (2, 2), expandir_mock)
+    algoritmo_bfs = get_algorithm("bfs")
+    costo, camino = algoritmo_bfs(nodo_inicial=(2, 2), nodo_objetivo=(2, 2), expandir=expandir_mock)
     
     assert costo == 0.0, f"Error: El costo esperado era 0.0, pero dio {costo}"
     assert camino == [], f"Error: El camino esperado era [], pero dio {camino}"
@@ -32,7 +37,8 @@ def test_caso_inalcanzable():
     # Simula que desde (0, 0) no hay vecinos posibles hacia (5, 5)
     expandir_vacio = lambda nodo: []
     
-    costo, camino = Algoritmo.Busqueda_En_Amplitud((0, 0), (5, 5), expandir_vacio)
+    algoritmo_bfs = get_algorithm("bfs")
+    costo, camino = algoritmo_bfs((0, 0), (5, 5), expandir_vacio)
     
     assert costo == float('inf'), f"Error: El costo debió ser infinito, pero dio {costo}"
     assert camino == [], f"Error: El camino debió ser [], pero dio {camino}"
@@ -53,7 +59,8 @@ def test_caso_lineal():
             return [(1.0, (x + 1, y))]
         return []
 
-    costo, camino = Algoritmo.Busqueda_En_Amplitud((0, 0), (3, 0), expandir_linea)
+    algoritmo_bfs = get_algorithm("bfs")
+    costo, camino = algoritmo_bfs((0, 0), (3, 0), expandir_linea)
     
     assert costo == 3.0, f"Error: Costo esperado 3.0 (3 pasos), obtenido {costo}"
     assert camino == [(1, 0), (2, 0), (3, 0)], f"Error en el camino reconstruido: {camino}"
@@ -90,8 +97,11 @@ def test_comparacion_cruzada_con_a_estrella():
     inicio = (1, 1)
     meta = mapa.pos_salida
 
-    costo_astar, camino_astar = Algoritmo.Busqueda_A_Estrella(inicio, meta, expandir)
-    costo_bfs, camino_bfs = Algoritmo.Busqueda_En_Amplitud(inicio, meta, expandir)
+    algoritmo_bfs = get_algorithm("bfs")
+    algoritmo_a_estrella = get_algorithm("a_estrella")
+
+    costo_bfs, camino_bfs = algoritmo_bfs(inicio, meta, expandir)
+    costo_astar, camino_astar = algoritmo_a_estrella(inicio, meta, expandir)
 
     print(f"   A*  -> Costo: {costo_astar}, Pasos: {len(camino_astar)}")
     print(f"   BFS -> Pasos (costo): {costo_bfs}, Longitud camino: {len(camino_bfs)}")
